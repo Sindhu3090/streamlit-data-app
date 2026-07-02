@@ -22,6 +22,10 @@ def summarize_sales(df) -> dict:
         "total_revenue": float(df["revenue"].sum()),
     }
 
+def calculate_average_order_value(total_revenue, total_orders):
+    if total_orders == 0:
+        return 0.0
+    return float(total_revenue / total_orders)
 
 def main() -> None:
     df = load_sales_data()
