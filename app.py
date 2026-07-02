@@ -5,7 +5,13 @@ import streamlit as st
 
 @st.cache_data
 def load_orders(path="data/superstore.csv"):
-    df = pd.read_csv(path)
+    if path.endswith(".csv"):
+        df = pd.read_csv(path)
+    elif path.endswith(".json"):
+        df = pd.read_json(path)
+    else:
+        raise ValueError("Unsupported file format")
+
     df["Order Date"] = pd.to_datetime(df["Order Date"], format="%m/%d/%Y")
     return df
 
@@ -24,11 +30,60 @@ def filter_orders(df, search="", region="All", category="All"):
         result = result[result["Category"] == category]
     return result
 
+def validate_orders(df):
+    issues = []
+
+    required_columns = [
+        "Order ID", "Order Date", "Region",
+        "Category", "Sales", "Quantity", "Profit"
+    ]
+
+    # 1. Missing columns
+    missing_cols = [c for c in required_columns if c not in df.columns]
+    if missing_cols:
+        issues.append(f"Missing columns: {missing_cols}")
+
+    # Stop further checks if structure is broken
+    if missing_cols:
+        return issues
+
+    # 2. Missing values
+    if df[required_columns].isnull().any().any():
+        issues.append("Dataset contains missing (null) values")
+
+    # 3. Numeric validation
+    numeric_cols = ["Sales", "Quantity", "Profit"]
+    for col in numeric_cols:
+        if not pd.api.types.is_numeric_dtype(df[col]):
+            issues.append(f"Column '{col}' is not numeric")
+
+    # 4. Negative values
+    if (df["Sales"] < 0).any():
+        issues.append("Negative values found in Sales")
+
+    if (df["Quantity"] < 0).any():
+        issues.append("Negative values found in Quantity")
+
+    if (df["Profit"] < 0).any():
+        issues.append("Negative values found in Profit")
+
+    # 5. Date validation (critical for analytics)
+    if df["Order Date"].isnull().any():
+        issues.append("Unparseable or invalid Order Date values")
+
+    return issues
 
 st.set_page_config(page_title="Order Explorer", layout="wide")
 st.title("Order Explorer")
 
 orders = load_orders()
+
+issues = validate_orders(orders)
+
+if issues:
+    st.warning("⚠ Data Quality Issues Detected")
+    for issue in issues:
+        st.write("- " + issue)
 
 st.sidebar.header("Filters")
 search = st.sidebar.text_input("Search customer or product")
