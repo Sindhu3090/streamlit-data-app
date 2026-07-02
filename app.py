@@ -15,6 +15,10 @@ def format_percent(value):
 
 st.set_page_config(page_title="Sales Insights", layout="wide")
 
+with st.sidebar:
+    st.header("Filters")
+    st.write("Filters will appear here.")
+
 st.image("assets/app_banner.png", width="stretch")
 
 st.title("Sales Insights")
