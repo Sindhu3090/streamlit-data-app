@@ -4,7 +4,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from validate_project import load_sales_data, summarize_sales
+from validate_project import load_sales_data, summarize_sales, calculate_average_order_value
 
 
 def test_summarize_sales_calculates_expected_totals():
@@ -22,4 +22,11 @@ def test_load_sales_data_rejects_missing_required_columns(tmp_path: Path):
     bad_file.write_text("region,orders\nNorth,12\n", encoding="utf-8")
     with pytest.raises(ValueError, match="Missing required columns"):
         load_sales_data(bad_file)
+
+def test_average_order_value():
+    assert calculate_average_order_value(250.0, 5) == 50.0
+
+
+def test_average_order_value_zero_orders():
+    assert calculate_average_order_value(0.0, 0) == 0.0
 # [/SOLUTION]
