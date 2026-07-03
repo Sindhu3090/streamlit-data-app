@@ -1,0 +1,24 @@
+# Python / venv
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+
+# Git
+.git/
+
+# Streamlit secrets (CRITICAL)
+.streamlit/secrets.toml
+
+# Environment files
+.env
+
+# Logs
+*.log
+
+# Jupyter / notebooks
+.ipynb_checkpoints/
+
+# Local data exports (safe to exclude)
+data/local_exports/
+data/*.tmp
