@@ -1,0 +1,13 @@
+# [SOLUTION]
+services:
+  app:
+    build: .
+    image: streamlit-data-app:local
+    ports:
+      - "8501:8501"
+    environment:
+      APP_ENV: local
+    volumes:
+      - ./data:/app/data
+      - ./.streamlit:/app/.streamlit
+# [/SOLUTION]
