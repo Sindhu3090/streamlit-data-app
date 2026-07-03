@@ -1,17 +1,13 @@
 # [SOLUTION]
+import altair as alt
 import pandas as pd
+import plotly.express as px
 import streamlit as st
 
 
 @st.cache_data
 def load_orders(path="data/superstore.csv"):
-    if path.endswith(".csv"):
-        df = pd.read_csv(path)
-    elif path.endswith(".json"):
-        df = pd.read_json(path)
-    else:
-        raise ValueError("Unsupported file format")
-
+    df = pd.read_csv(path)
     df["Order Date"] = pd.to_datetime(df["Order Date"], format="%m/%d/%Y")
     return df
 
@@ -30,60 +26,28 @@ def filter_orders(df, search="", region="All", category="All"):
         result = result[result["Category"] == category]
     return result
 
-def validate_orders(df):
-    issues = []
 
-    required_columns = [
-        "Order ID", "Order Date", "Region",
-        "Category", "Sales", "Quantity", "Profit"
-    ]
+def sales_by_region(df):
+    return (
+        df.groupby("Region", as_index=False)["Sales"]
+        .sum()
+        .sort_values("Sales", ascending=False)
+    )
 
-    # 1. Missing columns
-    missing_cols = [c for c in required_columns if c not in df.columns]
-    if missing_cols:
-        issues.append(f"Missing columns: {missing_cols}")
 
-    # Stop further checks if structure is broken
-    if missing_cols:
-        return issues
+def monthly_sales(df):
+    return (
+        df.set_index("Order Date")
+        .resample("MS")["Sales"]
+        .sum()
+        .reset_index()
+    )
 
-    # 2. Missing values
-    if df[required_columns].isnull().any().any():
-        issues.append("Dataset contains missing (null) values")
 
-    # 3. Numeric validation
-    numeric_cols = ["Sales", "Quantity", "Profit"]
-    for col in numeric_cols:
-        if not pd.api.types.is_numeric_dtype(df[col]):
-            issues.append(f"Column '{col}' is not numeric")
-
-    # 4. Negative values
-    if (df["Sales"] < 0).any():
-        issues.append("Negative values found in Sales")
-
-    if (df["Quantity"] < 0).any():
-        issues.append("Negative values found in Quantity")
-
-    if (df["Profit"] < 0).any():
-        issues.append("Negative values found in Profit")
-
-    # 5. Date validation (critical for analytics)
-    if df["Order Date"].isnull().any():
-        issues.append("Unparseable or invalid Order Date values")
-
-    return issues
-
-st.set_page_config(page_title="Order Explorer", layout="wide")
-st.title("Order Explorer")
+st.set_page_config(page_title="Sales Dashboard", layout="wide")
+st.title("Sales Dashboard")
 
 orders = load_orders()
-
-issues = validate_orders(orders)
-
-if issues:
-    st.warning("⚠ Data Quality Issues Detected")
-    for issue in issues:
-        st.write("- " + issue)
 
 st.sidebar.header("Filters")
 search = st.sidebar.text_input("Search customer or product")
@@ -99,28 +63,38 @@ col3.metric("Total Profit", f"${filtered['Profit'].sum():,.0f}")
 
 if filtered.empty:
     st.warning("No orders match the current filters. Try clearing a filter.")
-else:
-    st.dataframe(
-        filtered,
-        hide_index=True,
-        width="stretch",
-        column_config={
-            "Order Date": st.column_config.DateColumn("Order Date"),
-            "Sales": st.column_config.NumberColumn("Sales", format="$%.2f"),
-            "Profit": st.column_config.NumberColumn("Profit", format="$%.2f"),
-            "Quantity": st.column_config.NumberColumn("Quantity"),
-        },
-    )
+    st.stop()
 
-    st.subheader("Edit a sample of orders")
-    st.caption("Edits apply only to the current session - they do not change the source file.")
-    edited = st.data_editor(
-        filtered.head(20),
-        hide_index=True,
-        width="stretch",
-        column_config={
-            "Order ID": st.column_config.TextColumn("Order ID", disabled=True),
-            "Sales": st.column_config.NumberColumn("Sales", format="$%.2f"),
-        },
+view = st.segmented_control(
+    "Chart", ["Monthly trend", "Sales by region", "Sales vs profit"],
+    default="Monthly trend",
+)
+
+if view == "Monthly trend":
+    st.subheader("Monthly Sales Trend")
+    st.line_chart(monthly_sales(filtered), x="Order Date", y="Sales")
+
+elif view == "Sales by region":
+    st.subheader("Sales by Region")
+    fig = px.bar(
+        sales_by_region(filtered),
+        x="Region", y="Sales",
+        title="Total Sales by Region",
+        labels={"Sales": "Total Sales"},
     )
+    st.plotly_chart(fig, width="stretch")
+
+else:
+    st.subheader("Sales vs Profit")
+    scatter = (
+        alt.Chart(filtered)
+        .mark_circle(size=60, opacity=0.5)
+        .encode(
+            x=alt.X("Sales:Q", title="Sales"),
+            y=alt.Y("Profit:Q", title="Profit"),
+            color=alt.Color("Category:N", title="Category"),
+            tooltip=["Customer Name:N", "Sales:Q", "Profit:Q", "Region:N"],
+        )
+    )
+    st.altair_chart(scatter, width="stretch")
 # [/SOLUTION]
