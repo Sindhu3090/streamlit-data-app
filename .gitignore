@@ -3,3 +3,7 @@
 __pycache__/
 .pytest_cache/
 *.py[cod]
+
+# Local secrets and environment
+.streamlit/secrets.toml
+.env
